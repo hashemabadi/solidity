@@ -18,12 +18,37 @@
 
 #include <test/tools/fuzzer_common.h>
 
+#include <test/tools/ossfuzz/SolCustomMutator.h>
+
 #include <test/TestCaseReader.h>
 
 #include <sstream>
 
+using namespace solidity::test::fuzzer;
 using namespace solidity::frontend::test;
 using namespace std;
+
+extern "C" size_t LLVMFuzzerMutate(uint8_t* _data, size_t _size, size_t _maxSize);
+
+extern "C" size_t LLVMFuzzerCustomMutator(
+	uint8_t* _data,
+	size_t _size,
+	size_t _maxSize,
+	unsigned int _seed
+)
+{
+	if (_maxSize <= _size || _size == 0)
+		return LLVMFuzzerMutate(_data, _size, _maxSize);
+
+	try
+	{
+		return SolCustomMutator{_data, _size, _maxSize, _seed}.mutate();
+	}
+	catch (range_error const&)
+	{
+		return LLVMFuzzerMutate(_data, _size, _maxSize);
+	}
+}
 
 extern "C" int LLVMFuzzerTestOneInput(uint8_t const* _data, size_t _size)
 {
